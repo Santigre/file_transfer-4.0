@@ -1,22 +1,40 @@
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
-from datetime import datetime,time,timedelta
+from datetime import datetime,timedelta
+import time
 import shutil
-import os
+import os, sys
+from stat import *
 import sqlite3
 
 root = Tk()
 t = datetime.now()
 
 def make_table():
+    con =  sqlite3.connect('filetransfer.db')
+    with con:
+        c = con.cursor()
+        c.execute("CREATE TABLE IF NOT EXISTS File_info(Unix REAL);")
+        c.execute("SELECT COUNT(*) FROM File_info")
+        count = c.fetchone()[0]
+        if count < 1:
+             c.execute("INSERT INTO File_info VALUES(((julianday('now') - 2440587.5)*86400.0)-86400.0)")
+        con.commit()
+        c.close()
+    con.close()
+    read_table()
+    print('hello')
+
+def read_table():
     con = sqlite3.connect('filetransfer.db')
     with con:
-            c = con.cursor()
-            c.executescript("CREATE TABLE if not exists file_info(FileName TEXT,LastCheck TEXT);")
-            c.execute("INSERT INTO file_info (FileName,LastCheck) VALUES (?,?)",(doc_nameA,mod_time))
-            con.commit()
-        
+        c = con.cursor()
+        c.execute("SELECT MAX(Unix) FROM file_info")
+        lasttransfer = c.fetchone()[0]
+        read_lastTransfer = time.ctime(lasttransfer)
+        con.commit()    
+    return read_lastTransfer
 
 def pick_fileA():
     global doc_nameA
@@ -37,6 +55,7 @@ def pick_fileB():
     print(fileB)
     check_updates()
     show_nameB()
+    make_table()
 
 def show_nameA():
     for x in doc_nameA:
@@ -46,14 +65,15 @@ def show_nameB():
     for x in doc_nameB:
         fileB_list.insert(END, str(x))
 
-def show_mod_time():
-    global mod_time
-    for m in doc_nameA:
-        if m.endswith('.txt'):
-            files = (fileA+'\\'+m)
-            mod_time = datetime.fromtimestamp(os.stat(files).st_mtime)
-            print(mod_time)
-            last_check_listbox.insert(END,m,mod_time)
+
+##def show_mod_time():
+##    global mod_time
+##    for m in doc_nameB:
+##        if m.endswith('.txt'):
+##            files = (fileB+'\\'+m)
+##            mod_time = datetime.fromtimestamp(os.stat(files).st_mtime)
+##            print(mod_time)
+##            last_check_listbox.insert(END,m,mod_time)
 
 def check_updates():
     for m in doc_nameA:
@@ -66,8 +86,6 @@ def check_updates():
                 print(m, "has been backed up to: ", fileB)
                 show_nameB()
                 fileB_list.delete(0, END)
-                show_mod_time()
-                make_table()
             else:
                 print("This file hasnt been changed: ", m)
 
@@ -82,7 +100,6 @@ def manual_updates():
                 print(m, "has been backed up to: ", fileB)
                 fileB_list.delete(0, END)
                 show_nameB()
-                show_mod_time()
     
 
 label = Label(root, text = "File updates")
@@ -119,10 +136,9 @@ fileB_list.grid(row = 2, column = 2)
 
 
 
-last_check_label = Label(root, text = "Last check time")
+last_check_label = Label(root, text = "Last check was:  {}".format(read_table()))
 last_check_label.grid(row = 4, column = 1)
-last_check_listbox = Listbox(root, height = 4, width = 40)
-last_check_listbox.grid(row = 5, column = 1, columnspan = 3)
+
 
 
 
