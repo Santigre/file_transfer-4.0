@@ -15,26 +15,26 @@ def make_table():
     con =  sqlite3.connect('filetransfer.db')
     with con:
         c = con.cursor()
-        c.execute("CREATE TABLE IF NOT EXISTS File_info(Unix REAL);")
+        c.execute("CREATE TABLE IF NOT EXISTS File_info(Unix REAL)")
         c.execute("SELECT COUNT(*) FROM File_info")
         count = c.fetchone()[0]
-        if count < 1:
+        if count >= 0:
              c.execute("INSERT INTO File_info VALUES(((julianday('now') - 2440587.5)*86400.0)-86400.0)")
         con.commit()
         c.close()
     con.close()
-    read_table()
-    print('hello')
+
 
 def read_table():
     con = sqlite3.connect('filetransfer.db')
     with con:
         c = con.cursor()
-        c.execute("SELECT MAX(Unix) FROM file_info")
+        c.execute("SELECT MAX(Unix) FROM File_info")
         lasttransfer = c.fetchone()[0]
         read_lastTransfer = time.ctime(lasttransfer)
         con.commit()    
     return read_lastTransfer
+
 
 def pick_fileA():
     global doc_nameA
@@ -55,7 +55,6 @@ def pick_fileB():
     print(fileB)
     check_updates()
     show_nameB()
-    make_table()
 
 def show_nameA():
     for x in doc_nameA:
@@ -81,13 +80,15 @@ def check_updates():
             files = (fileA+'\\'+m) #Stores the address of the text documents to use later
             mod_time = datetime.fromtimestamp(os.stat(files).st_mtime) #converts this unix timestamp to a datetime object
             time_since_mod = (t - mod_time) # Gets the time diffrence between the current time and the time it was modified
-            if time_since_mod > timedelta(days=1): # If time_since_mod is less than 1 day (meaning it was modified that day) -->
+            if time_since_mod < timedelta(days=1): # If time_since_mod is less than 1 day (meaning it was modified that day) -->
                 shutil.copy(files,fileB) # It copies the file to dst
                 print(m, "has been backed up to: ", fileB)
                 show_nameB()
+                make_table()
                 fileB_list.delete(0, END)
             else:
                 print("This file hasnt been changed: ", m)
+                
 
 def manual_updates():
     for m in doc_nameA:
@@ -134,10 +135,10 @@ fileB_label.grid(row = 1, column = 2)
 fileB_list = Listbox(root)
 fileB_list.grid(row = 2, column = 2)
 
-
-
 last_check_label = Label(root, text = "Last check was:  {}".format(read_table()))
-last_check_label.grid(row = 4, column = 1)
+last_check_label.grid(row = 5, column = 1)
+
+
 
 
 
